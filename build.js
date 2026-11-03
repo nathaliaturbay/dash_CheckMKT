@@ -112,6 +112,9 @@ async function buildClient(slug, cfg, template) {
   fs.mkdirSync(path.join('site', slug), { recursive: true });
   fs.writeFileSync(path.join('site', slug, 'index.html'), html);
   console.log(`${slug}: ${meta.length} Meta rows, ${google.length} Google rows`);
+  const sum = (rows) => rows.reduce((a, r) => ({ spend: a.spend + r.spend, leads: a.leads + r.leads, clicks: a.clicks + r.clicks }), { spend: 0, leads: 0, clicks: 0 });
+  const span = (rows) => rows.length ? `${rows.reduce((m, r) => (r.day < m ? r.day : m), rows[0].day)}..${rows.reduce((m, r) => (r.day > m ? r.day : m), rows[0].day)}` : 'none';
+  console.log(`${slug}: Meta ${span(meta)} ${JSON.stringify(sum(meta))}; Google ${span(google)} ${JSON.stringify(sum(google))}`);
 }
 
 (async () => {
