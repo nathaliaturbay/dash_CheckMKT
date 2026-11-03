@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<style>
+:root{
+  --bg:#faf9f5;--panel:#ffffff;--fg:#1f1e1d;--muted:#6b6a65;--line:#e6e3da;--grid:#eeece5;--axis:#c9c6bc;
+  --bad:#c4473a;--c0:#2f6fdb;--c1:#d97a2b;--shadow:0 6px 20px rgba(0,0,0,.08);
+  --sans:'Inter',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;--serif:'Source Serif 4',Georgia,serif;
+  --r:10px;--gap:20px;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#1c1b19;--panel:#262522;--fg:#f2f0ea;--muted:#a3a097;--line:#3a3833;--grid:#33312d;--axis:#55524b;
+  --c0:#6c9bf0;--c1:#eb9a56;--shadow:0 6px 20px rgba(0,0,0,.4);
+}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:15px;line-height:1.45}
+.sp{max-width:1180px;margin:0 auto;padding:32px 16px 48px;display:flex;flex-direction:column;gap:var(--gap)}
+.sp-head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:16px}
+.sp-head>div{min-width:0}
+.sp-head h1{margin:0;font-family:var(--serif);font-weight:400;font-size:clamp(26px,4vw,34px);line-height:1.15;text-wrap:balance}
+.sp-take{margin:8px 0 0;max-width:62ch;color:var(--muted)}
+.sp-take b{color:var(--fg);font-weight:500;font-variant-numeric:tabular-nums}
+.sp-filter{display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted)}
+.sp-filter select{font:inherit;font-size:15px;color:var(--fg);background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:8px 12px}
+.sp-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,9.5rem),1fr));gap:16px}
+.sp-tile{display:flex;flex-direction:column;gap:6px;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:16px 20px}
+.sp-tile .lbl,.sp-tile .note{font-size:13px;color:var(--muted)}
+.sp-tile .val{font-family:var(--serif);font-size:32px;font-variant-numeric:tabular-nums;line-height:1.2}
+.sp-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,24rem),1fr));gap:16px}
+.sp-card{display:flex;flex-direction:column;gap:10px;min-width:0;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:20px}
+.sp-wide{grid-column:1/-1}
+.sp-card h2{margin:0;font-size:17px;font-weight:500}
+.sp-card .sub{margin:0;font-size:13px;color:var(--muted)}
+.sp-chart{position:relative;min-height:250px}
+.sp-chart svg{display:block;font-size:12px;overflow:visible}
+.sp-tip{position:absolute;pointer-events:none;background:var(--panel);border:1px solid var(--line);border-radius:8px;box-shadow:var(--shadow);padding:8px 10px;font-size:12px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.sp-tip .d{color:var(--muted)}
+.sp-empty{display:flex;align-items:center;justify-content:center;min-height:250px;color:var(--muted);font-size:13px}
+.sp-list{list-style:none;margin:0;padding:0}
+.sp-list li{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
+.sp-list li:last-child{border-bottom:0}
+.sp-list .k{color:var(--muted)}
+.sp-list .v{font-variant-numeric:tabular-nums;font-weight:500}
+.sp-sw{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:baseline}
+.sp-sw.m{background:var(--c0)}.sp-sw.g{background:var(--c1)}
+.sp-tablebox{overflow-x:auto}
+.sp-table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+.sp-table th{text-align:right;font-weight:500;font-size:13px;color:var(--muted);padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+.sp-table td{text-align:right;padding:10px;border-bottom:1px solid var(--line);white-space:nowrap}
+.sp-table th:first-child,.sp-table td:first-child{text-align:left;padding-left:0;white-space:normal}
+.sp-table th:nth-child(2),.sp-table td:nth-child(2){text-align:left}
+.sp-table tr:last-child td{border-bottom:0}
+.sp-defs{margin:0;font-size:13px;color:var(--muted);max-width:75ch}
+.sp-error{background:var(--panel);border:1px solid var(--bad);border-radius:var(--r);padding:16px;color:var(--bad)}
+@media (max-width:640px){.sp-hide-narrow{display:none}.sp{padding-top:20px}}
+</style>
+</head>
+<body>
+<div class="sp">
+  <header class="sp-head">
+    <div>
+      <h1 id="title">Ads results</h1>
+      <p class="sp-take"><b id="t-spend">—</b> invested in ads brought <b id="t-leads">—</b> leads, at <b id="t-cpl">—</b> per lead.</p>
+    </div>
+    <label class="sp-filter" for="period">Period
+      <select id="period">
+        <option value="today">Today</option>
+        <option value="yesterday">Yesterday</option>
+        <option value="7">Last 7 days</option>
+        <option value="14">Last 14 days</option>
+        <option value="30" selected>Last 30 days</option>
+        <option value="this_month">This month</option>
+        <option value="last_month">Last month</option>
+        <option value="90">Last 90 days</option>
+      </select>
+    </label>
+  </header>
+
+  <section class="sp-tiles" aria-label="Headline figures">
+    <div class="sp-tile"><span class="lbl">Leads</span><span class="val" id="k-leads">—</span><span class="note" id="k-leads-note">All platforms combined</span></div>
+    <div class="sp-tile"><span class="lbl">Cost per lead</span><span class="val" id="k-cpl">—</span><span class="note">Amount spent ÷ leads</span></div>
+    <div class="sp-tile"><span class="lbl">Amount spent</span><span class="val" id="k-spend">—</span><span class="note" id="k-spend-note"></span></div>
+    <div class="sp-tile"><span class="lbl">Clicks to the business</span><span class="val" id="k-clicks">—</span><span class="note">Ad clicks and link clicks</span></div>
+  </section>
+
+  <section class="sp-grid">
+    <article class="sp-card sp-wide">
+      <h2>Spend and leads by day</h2>
+      <p class="sub" id="legend"></p>
+      <div class="sp-chart" id="chart"></div>
+    </article>
+
+    <article class="sp-card" id="meta-card">
+      <h2><span class="sp-sw m"></span>Meta Ads</h2>
+      <p class="sub">Facebook and Instagram</p>
+      <ul class="sp-list">
+        <li><span class="k">Amount spent</span><span class="v" id="m-spend">—</span></li>
+        <li><span class="k">Leads</span><span class="v" id="m-leads">—</span></li>
+        <li><span class="k">Cost per lead</span><span class="v" id="m-cpl">—</span></li>
+        <li><span class="k">Impressions</span><span class="v" id="m-impr">—</span></li>
+        <li><span class="k">Link clicks</span><span class="v" id="m-clicks">—</span></li>
+      </ul>
+    </article>
+
+    <article class="sp-card" id="google-card">
+      <h2><span class="sp-sw g"></span>Google Ads</h2>
+      <p class="sub">Search, Performance Max and Local Services</p>
+      <ul class="sp-list">
+        <li><span class="k">Amount spent</span><span class="v" id="g-spend">—</span></li>
+        <li><span class="k">Leads</span><span class="v" id="g-leads">—</span></li>
+        <li><span class="k">Cost per lead</span><span class="v" id="g-cpl">—</span></li>
+        <li><span class="k">Impressions</span><span class="v" id="g-impr">—</span></li>
+        <li><span class="k">Ad clicks</span><span class="v" id="g-clicks">—</span></li>
+      </ul>
+    </article>
+
+    <article class="sp-card sp-wide">
+      <h2>Results by campaign</h2>
+      <p class="sub">Campaigns with activity in the period, highest spend first</p>
+      <div class="sp-tablebox">
+        <table class="sp-table">
+          <thead><tr>
+            <th scope="col">Campaign</th><th scope="col">Platform</th><th scope="col">Spent</th>
+            <th scope="col">Leads</th><th scope="col">Cost per lead</th><th scope="col" class="sp-hide-narrow">Clicks</th>
+          </tr></thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+    </article>
+  </section>
+
+  <p class="sp-defs" id="defs"></p>
+</div>
+
+<script>
+const DATA = /*__DATA__*/null;
+</script>
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+  const money = new Intl.NumberFormat(DATA.locale, {style: 'currency', currency: DATA.currency});
+  const money0 = new Intl.NumberFormat(DATA.locale, {style: 'currency', currency: DATA.currency, maximumFractionDigits: 0});
+  const int = new Intl.NumberFormat(DATA.locale, {maximumFractionDigits: 0});
+  const fmt = {usd: (v) => (v == null ? '—' : money.format(v)), int: (v) => (v == null ? '—' : int.format(v))};
+  const dayShort = d3.utcFormat('%b %-d');
+  const dayLong = d3.utcFormat('%a, %b %-d');
+  const set = (id, v) => { const el = $(id); if (el) el.textContent = v; };
+
+  const series = [];
+  if (DATA.hasMeta) series.push({key: 'meta', label: 'Meta', color: 'var(--c0)', rows: DATA.meta});
+  if (DATA.hasGoogle) series.push({key: 'google', label: 'Google', color: 'var(--c1)', rows: DATA.google});
+  if (!DATA.hasMeta) $('meta-card').remove();
+  if (!DATA.hasGoogle) $('google-card').remove();
+
+  document.title = DATA.client + ' · Ads results';
+  set('title', DATA.client + ' · ' + series.map((s) => s.label).join(' and ') + ' Ads results');
+  set('k-spend-note', DATA.currency + (series.length > 1 ? ', both platforms' : ''));
+  set('k-leads-note', series.length > 1 ? series.map((s) => s.label).join(' and ') + ' combined' : series.map((s) => s.label).join('') + ' leads');
+  const legend = $('legend');
+  series.forEach((s) => {
+    const sw = document.createElement('span'); sw.className = 'sp-sw'; sw.style.background = s.color;
+    legend.append(sw, s.label + ' spend   ');
+  });
+  legend.append('· The number above a bar is the leads that day. Today’s figures are still filling in.');
+
+  const lastDay = d3.max(series.flatMap((s) => s.rows.map((r) => r.day)));
+  const updated = new Date(DATA.generatedAt);
+  const defs = [];
+  defs.push('Data comes from the ' + series.map((s) => s.label).join(' and ') + ' Ads accounts and is refreshed every day.');
+  if (lastDay) defs.push('Latest day in the data: ' + dayLong(new Date(lastDay + 'T00:00:00Z')) + '.');
+  defs.push('Platforms can take a few hours to finish counting a day, so today and yesterday may still go up.');
+  if (DATA.hasGoogle) defs.push('Google leads are the account’s conversions plus calls from call ads.');
+  if (DATA.hasMeta) defs.push('Meta leads are lead form submissions, website leads, messaging conversations and calls from ads.');
+  set('defs', defs.join(' '));
+
+  const iso = (d) => d.toISOString().slice(0, 10);
+  const todayLocal = () => { const n = new Date(); return new Date(Date.UTC(n.getFullYear(), n.getMonth(), n.getDate())); };
+  function range(p) {
+    const t = todayLocal();
+    const back = (n) => new Date(t.getTime() - n * 864e5);
+    if (p === 'today') return [iso(t), iso(t)];
+    if (p === 'yesterday') return [iso(back(1)), iso(back(1))];
+    if (p === 'this_month') return [iso(new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), 1))), iso(t)];
+    if (p === 'last_month') {
+      const a = new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth() - 1, 1));
+      const b = new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), 0));
+      return [iso(a), iso(b)];
+    }
+    return [iso(back(Number(p) - 1)), iso(t)];
+  }
+
+  function render() {
+    const [from, to] = range($('period').value);
+    const inRange = (r) => r.day >= from && r.day <= to;
+    const tot = {};
+    const days = new Map();
+    const camps = new Map();
+    series.forEach((s) => {
+      const t = tot[s.key] = {spend: 0, leads: 0, clicks: 0, impressions: 0};
+      s.rows.filter(inRange).forEach((r) => {
+        t.spend += r.spend; t.leads += r.leads; t.clicks += r.clicks; t.impressions += r.impressions;
+        const d = days.get(r.day) || {day: r.day, leads: 0, clicks: 0};
+        d[s.key] = (d[s.key] || 0) + r.spend; d.leads += r.leads; d.clicks += r.clicks;
+        days.set(r.day, d);
+        const k = s.label + '|' + r.campaign;
+        const c = camps.get(k) || {campaign: r.campaign, channel: s.label, spend: 0, leads: 0, clicks: 0};
+        c.spend += r.spend; c.leads += r.leads; c.clicks += r.clicks;
+        camps.set(k, c);
+      });
+    });
+    const sum = (f) => series.reduce((a, s) => a + tot[s.key][f], 0);
+    const spend = sum('spend'), leads = sum('leads'), clicks = sum('clicks');
+    const cpl = (sp, l) => (l ? sp / l : null);
+    set('t-spend', fmt.usd(spend)); set('t-leads', fmt.int(leads)); set('t-cpl', fmt.usd(cpl(spend, leads)));
+    set('k-spend', fmt.usd(spend)); set('k-leads', fmt.int(leads)); set('k-cpl', fmt.usd(cpl(spend, leads))); set('k-clicks', fmt.int(clicks));
+    [['meta', 'm'], ['google', 'g']].forEach(([key, p]) => {
+      const t = tot[key]; if (!t) return;
+      set(p + '-spend', fmt.usd(t.spend)); set(p + '-leads', fmt.int(t.leads)); set(p + '-cpl', fmt.usd(cpl(t.spend, t.leads)));
+      set(p + '-impr', fmt.int(t.impressions)); set(p + '-clicks', fmt.int(t.clicks));
+    });
+
+    const tbody = $('rows');
+    tbody.replaceChildren();
+    [...camps.values()].filter((c) => c.spend > 0 || c.clicks > 0 || c.leads > 0)
+      .sort((a, b) => b.spend - a.spend).forEach((c) => {
+        const tr = document.createElement('tr');
+        [[c.campaign], [c.channel], [fmt.usd(c.spend)], [fmt.int(c.leads)], [fmt.usd(cpl(c.spend, c.leads))], [fmt.int(c.clicks), 'sp-hide-narrow']]
+          .forEach(([v, cls]) => { const td = document.createElement('td'); td.textContent = v; if (cls) td.className = cls; tr.append(td); });
+        tbody.append(tr);
+      });
+
+    drawChart([...days.values()].sort((a, b) => (a.day < b.day ? -1 : 1)));
+  }
+
+  function drawChart(data) {
+    const el = $('chart');
+    el.replaceChildren();
+    if (!data.length) { const e = document.createElement('div'); e.className = 'sp-empty'; e.textContent = 'No ad activity in this period'; el.append(e); return; }
+    const rows = data.map((r) => ({...r, date: new Date(r.day + 'T00:00:00Z'), total: d3.sum(series, (s) => r[s.key] || 0)}));
+    const W = Math.max(280, el.clientWidth || 600), H = 250, m = {t: 22, r: 4, b: 26, l: 0};
+    const y = d3.scaleLinear([0, d3.max(rows, (r) => r.total) || 1], [H - m.b, m.t]).nice();
+    const ticks = y.ticks(4);
+    const svg = d3.select(el).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`).attr('role', 'img').attr('aria-label', 'Amount spent and leads per day');
+    const probe = svg.append('text').attr('visibility', 'hidden');
+    const widest = d3.max(ticks, (t) => { probe.text(money0.format(t)); return probe.node().getComputedTextLength(); }) || 30;
+    probe.text('Oct 30'); const dayW = probe.node().getComputedTextLength() + 14; probe.remove();
+    m.l = Math.ceil(widest) + 8;
+    const x = d3.scaleBand(rows.map((r) => r.day), [m.l, W - m.r]).padding(0.25);
+    ticks.forEach((t) => {
+      svg.append('line').attr('x1', m.l).attr('x2', W - m.r).attr('y1', y(t)).attr('y2', y(t)).attr('stroke', 'var(--grid)');
+      svg.append('text').attr('x', m.l - 8).attr('y', y(t)).attr('dy', '0.32em').attr('text-anchor', 'end').attr('fill', 'var(--muted)').text(money0.format(t));
+    });
+    const bw = Math.min(32, x.bandwidth()), off = (x.bandwidth() - bw) / 2;
+    const bars = svg.append('g');
+    rows.forEach((r) => {
+      let base = 0;
+      const g = bars.append('g').datum(r).attr('class', 'sp-bar');
+      series.forEach((s) => {
+        const v = r[s.key] || 0; if (v <= 0) return;
+        g.append('rect').attr('x', x(r.day) + off).attr('width', bw).attr('y', y(base + v))
+          .attr('height', Math.max(0, y(base) - y(base + v))).attr('rx', Math.min(2, bw / 2)).style('fill', s.color);
+        base += v;
+      });
+    });
+    if (x.bandwidth() >= 12) {
+      svg.append('g').selectAll('text').data(rows.filter((r) => r.leads > 0)).join('text')
+        .attr('x', (r) => x(r.day) + x.bandwidth() / 2).attr('y', (r) => y(r.total) - 6).attr('text-anchor', 'middle')
+        .attr('font-weight', 600).style('fill', 'var(--fg)').text((r) => int.format(r.leads));
+    }
+    const every = Math.max(1, Math.ceil(dayW / x.step()));
+    svg.append('g').selectAll('text').data(rows.filter((r, i) => (rows.length - 1 - i) % every === 0)).join('text')
+      .attr('x', (r) => x(r.day) + x.bandwidth() / 2).attr('y', H - 6).attr('text-anchor', 'middle').attr('fill', 'var(--muted)').text((r) => dayShort(r.date));
+    svg.append('line').attr('x1', m.l).attr('x2', W - m.r).attr('y1', y(0)).attr('y2', y(0)).attr('stroke', 'var(--axis)');
+
+    const tip = document.createElement('div'); tip.className = 'sp-tip'; tip.hidden = true; el.append(tip);
+    const show = (r) => {
+      bars.selectAll('.sp-bar').style('opacity', (b) => (b === r ? 1 : 0.45));
+      const line = (t) => { const p = document.createElement('div'); p.textContent = t; return p; };
+      const head = line(dayLong(r.date)); head.className = 'd';
+      const lines = [head];
+      if (series.length > 1) series.forEach((s) => lines.push(line(s.label + ' spend: ' + money.format(r[s.key] || 0))));
+      lines.push(line('Spent: ' + money.format(r.total)), line('Leads: ' + int.format(r.leads)), line('Clicks: ' + int.format(r.clicks)));
+      tip.replaceChildren(...lines); tip.hidden = false;
+      const sc = el.clientWidth / W, cx = (x(r.day) + x.bandwidth() / 2) * sc, tw = tip.offsetWidth;
+      tip.style.left = Math.max(0, Math.min(el.clientWidth - tw, cx - tw / 2)) + 'px';
+      tip.style.top = Math.max(0, y(r.total) * sc - tip.offsetHeight - 12) + 'px';
+    };
+    const hide = () => { bars.selectAll('.sp-bar').style('opacity', 1); tip.hidden = true; };
+    svg.append('g').selectAll('rect').data(rows).join('rect')
+      .attr('x', (r) => x(r.day) - (x.step() - x.bandwidth()) / 2).attr('width', x.step())
+      .attr('y', m.t).attr('height', H - m.t - m.b).attr('fill', 'transparent')
+      .on('mouseenter', (e, r) => show(r)).on('click', (e, r) => show(r)).on('mouseleave', hide);
+  }
+
+  $('period').addEventListener('change', render);
+  let w = 0;
+  window.addEventListener('resize', () => { const c = $('chart').clientWidth; if (c !== w) { w = c; render(); } });
+  render();
+})();
+</script>
+</body>
+</html>

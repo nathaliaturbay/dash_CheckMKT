@@ -1,0 +1,7 @@
+{
+  "name": "AJ Carpentry",
+  "currency": "USD",
+  "locale": "en-US",
+  "metaCsvSecret": "AJ_META_CSV",
+  "googleCsvSecret": "AJ_GOOGLE_CSV"
+}
