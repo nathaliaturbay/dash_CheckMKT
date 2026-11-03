@@ -28,8 +28,8 @@ jobs:
       - name: Build pages from the Stract sheets
         run: node build.js
         env:
-          AJ_META_CSV: ${{ secrets.AJ_META_CSV }}
-          AJ_GOOGLE_CSV: ${{ secrets.AJ_GOOGLE_CSV }}
+          AJ_META_CSV: ${{ secrets.AJ_META_CSV || vars.AJ_META_CSV }}
+          AJ_GOOGLE_CSV: ${{ secrets.AJ_GOOGLE_CSV || vars.AJ_GOOGLE_CSV }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: site
