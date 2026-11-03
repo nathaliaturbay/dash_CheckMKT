@@ -7,9 +7,11 @@ const path = require('path');
 
 const META_COLS = {
   day: [0, 'date'], campaign: [1, 'campaign'], spend: [2, 'spend'], impressions: [3, 'impressions'],
-  reach: [4, 'reach'], clicks: [5, 'link click'], lead_form: [6, 'lead grouped'], lead_site: [7, 'pixel lead'],
-  lead_msg: [8, 'messaging'], lead_call: [9, 'call placed'],
+  clicks: [5, 'link click'],
 };
+// What counts as a Meta lead: every column whose header contains one of these words.
+// A client can set its own list with "metaLeadWords" in clients/<client>.json.
+const META_LEAD_WORDS = ['lead grouped', 'pixel lead', 'messaging', 'call placed'];
 const GOOGLE_COLS = {
   day: [0, 'date'], campaign: [1, 'campaign'], spend: [2, 'cost'], impressions: [3, 'impressions'],
   clicks: [4, 'clicks'], conversions: [5, 'conversions'], calls: [6, 'phone calls'],
@@ -51,7 +53,7 @@ function toNum(v) {
   return Number.isFinite(n) ? n : 0;
 }
 
-function readRows(text, cols) {
+function readRows(text, cols, leadWords) {
   const values = parseCsv(text);
   if (values.length < 2) return [];
   const head = values[0].map((h) => h.toLowerCase());
@@ -60,12 +62,15 @@ function readRows(text, cols) {
     const f = head.findIndex((h) => h.includes(word));
     idx[k] = f !== -1 ? f : pos;
   }
+  const leadIdx = (leadWords || []).flatMap((w) => head.map((h, i) => (h.includes(w.toLowerCase()) ? i : -1)).filter((i) => i !== -1));
+  if (leadWords && !leadIdx.length) throw new Error(`no lead columns found (looked for: ${leadWords.join(', ')})`);
   const out = [];
   for (const row of values.slice(1)) {
     const day = toDay(row[idx.day]);
     if (!day) continue;
     const r = { day, campaign: row[idx.campaign] || '(no name)' };
     for (const k of Object.keys(cols)) if (k !== 'day' && k !== 'campaign') r[k] = toNum(row[idx[k]]);
+    if (leadWords) r.leads = [...new Set(leadIdx)].reduce((a, i) => a + toNum(row[i]), 0);
     out.push(r);
   }
   return out;
@@ -78,7 +83,7 @@ async function getCsv(secretName) {
     return fs.existsSync(f) ? fs.readFileSync(f, 'utf8') : null;
   }
   const url = process.env[secretName];
-  if (!url) throw new Error(`Secret ${secretName} is not set`);
+  if (!url) { const e = new Error(`secret ${secretName} is not set yet`); e.missingSecret = true; throw e; }
   // A normal sheet link (…/d/<id>/edit) also works once the sheet is published to the web.
   const m = url.match(/docs\.google\.com\/spreadsheets\/d\/([A-Za-z0-9_-]{20,})/);
   const gid = (url.match(/[#&?]gid=(\d+)/) || [])[1] || '0';
@@ -93,10 +98,7 @@ async function getCsv(secretName) {
 async function buildClient(slug, cfg, template) {
   const metaCsv = await getCsv(cfg.metaCsvSecret);
   const googleCsv = await getCsv(cfg.googleCsvSecret);
-  const meta = metaCsv ? readRows(metaCsv, META_COLS).map((r) => ({
-    day: r.day, campaign: r.campaign, spend: r.spend, impressions: r.impressions, clicks: r.clicks,
-    leads: r.lead_form + r.lead_site + r.lead_msg + r.lead_call,
-  })) : [];
+  const meta = metaCsv ? readRows(metaCsv, META_COLS, cfg.metaLeadWords || META_LEAD_WORDS) : [];
   let google = googleCsv ? readRows(googleCsv, GOOGLE_COLS).map((r) => ({
     day: r.day, campaign: r.campaign, spend: r.spend, impressions: r.impressions, clicks: r.clicks,
     leads: r.conversions + r.calls,
@@ -105,7 +107,7 @@ async function buildClient(slug, cfg, template) {
   if (google.some((r) => r.spend > 100000)) google = google.map((r) => ({ ...r, spend: r.spend / 1e6 }));
   const data = {
     client: cfg.name, currency: cfg.currency || 'USD', locale: cfg.locale || 'en-US',
-    hasMeta: !!metaCsv, hasGoogle: !!googleCsv, meta, google, generatedAt: new Date().toISOString(),
+    metaLeadsNote: cfg.metaLeadsNote || null, hasMeta: !!metaCsv, hasGoogle: !!googleCsv, meta, google, generatedAt: new Date().toISOString(),
   };
   const json = JSON.stringify(data).replace(/</g, '\\u003c');
   const html = template.replace('/*__DATA__*/null', () => json);
@@ -127,7 +129,10 @@ async function buildClient(slug, cfg, template) {
   for (const f of fs.readdirSync('clients').filter((f) => f.endsWith('.json'))) {
     const slug = f.replace(/\.json$/, '');
     try { await buildClient(slug, JSON.parse(fs.readFileSync(path.join('clients', f), 'utf8')), template); }
-    catch (e) { failed++; console.error(`${slug}: FAILED - ${e.message}`); }
+    catch (e) {
+      if (e.missingSecret) { console.log(`::warning::${slug} skipped: ${e.message}`); continue; }
+      failed++; console.error(`${slug}: FAILED - ${e.message}`);
+    }
   }
   if (failed) process.exit(1);
 })();

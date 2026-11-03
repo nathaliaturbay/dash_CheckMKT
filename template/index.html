@@ -176,7 +176,7 @@ const DATA = /*__DATA__*/null;
   if (lastDay) defs.push('Latest day in the data: ' + dayLong(new Date(lastDay + 'T00:00:00Z')) + '.');
   defs.push('Platforms can take a few hours to finish counting a day, so today and yesterday may still go up.');
   if (DATA.hasGoogle) defs.push('Google leads are the account’s conversions plus calls from call ads.');
-  if (DATA.hasMeta) defs.push('Meta leads are lead form submissions, website leads, messaging conversations and calls from ads.');
+  if (DATA.hasMeta) defs.push(DATA.metaLeadsNote || 'Meta leads are lead form submissions, website leads, messaging conversations and calls from ads.');
   set('defs', defs.join(' '));
 
   const iso = (d) => d.toISOString().slice(0, 10);

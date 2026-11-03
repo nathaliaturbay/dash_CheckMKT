@@ -1,0 +1,8 @@
+{
+  "name": "Shoreline Pools",
+  "currency": "USD",
+  "locale": "en-US",
+  "metaCsvSecret": "SHORELINE_META_CSV",
+  "metaLeadWords": ["lead grouped", "call placed", "message-sent"],
+  "metaLeadsNote": "Leads are lead form submissions, calls from ads and messages sent through the website."
+}
