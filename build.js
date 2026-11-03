@@ -79,7 +79,11 @@ async function getCsv(secretName) {
   }
   const url = process.env[secretName];
   if (!url) throw new Error(`Secret ${secretName} is not set`);
-  const res = await fetch(url, { redirect: 'follow' });
+  // A normal sheet link (…/d/<id>/edit) also works once the sheet is published to the web.
+  const m = url.match(/docs\.google\.com\/spreadsheets\/d\/([A-Za-z0-9_-]{20,})/);
+  const gid = (url.match(/[#&?]gid=(\d+)/) || [])[1] || '0';
+  const csvUrl = m ? `https://docs.google.com/spreadsheets/d/${m[1]}/gviz/tq?tqx=out:csv&gid=${gid}` : url;
+  const res = await fetch(csvUrl.trim(), { redirect: 'follow' });
   if (!res.ok) throw new Error(`Could not download ${secretName}: HTTP ${res.status}`);
   const text = await res.text();
   if (/^\s*</.test(text)) throw new Error(`${secretName} returned a web page, not a CSV. Check that the sheet is published as CSV.`);
