@@ -1,0 +1,10 @@
+{
+  "name": "OnMe Jewelry",
+  "currency": "USD",
+  "locale": "en-US",
+  "metaCsvSecret": "ONME_META_CSV",
+  "metaLeadWords": ["messaging"],
+  "resultOne": "conversation",
+  "resultMany": "conversations",
+  "metaLeadsNote": "Conversations are new messaging conversations started from the ads."
+}

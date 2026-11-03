@@ -152,6 +152,16 @@ const DATA = /*__DATA__*/null;
   const dayLong = d3.utcFormat('%a, %b %-d');
   const set = (id, v) => { const el = $(id); if (el) el.textContent = v; };
 
+  // Wording of the main result ("lead" by default; e.g. "conversation" for a messaging client).
+  const one = DATA.resultOne || 'lead', many = DATA.resultMany || 'leads';
+  const cap = (w) => w.charAt(0).toUpperCase() + w.slice(1);
+  if (one !== 'lead') {
+    const words = {leads: many, Leads: cap(many), lead: one, Lead: cap(one)};
+    const walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    for (let n = walk.nextNode(); n; n = walk.nextNode()) {
+      if (n.parentNode.nodeName !== 'SCRIPT') n.nodeValue = n.nodeValue.replace(/\b(leads|Leads|lead|Lead)\b/g, (w) => words[w]);
+    }
+  }
   const series = [];
   if (DATA.hasMeta) series.push({key: 'meta', label: 'Meta', color: 'var(--c0)', rows: DATA.meta});
   if (DATA.hasGoogle) series.push({key: 'google', label: 'Google', color: 'var(--c1)', rows: DATA.google});
@@ -161,18 +171,18 @@ const DATA = /*__DATA__*/null;
   document.title = DATA.client + ' · Ads results';
   set('title', DATA.client + ' · ' + series.map((s) => s.label).join(' and ') + ' Ads results');
   set('k-spend-note', DATA.currency + (series.length > 1 ? ', both platforms' : ''));
-  set('k-leads-note', series.length > 1 ? series.map((s) => s.label).join(' and ') + ' combined' : series.map((s) => s.label).join('') + ' leads');
+  set('k-leads-note', series.length > 1 ? series.map((s) => s.label).join(' and ') + ' combined' : series.map((s) => s.label).join('') + ' ' + many);
   const legend = $('legend');
   series.forEach((s) => {
     const sw = document.createElement('span'); sw.className = 'sp-sw'; sw.style.background = s.color;
     legend.append(sw, s.label + ' spend   ');
   });
-  legend.append('· The number above a bar is the leads that day. Today’s figures are still filling in.');
+  legend.append('· The number above a bar is the ' + many + ' that day.'); legend.append(' Today’s figures are still filling in.');
 
   const lastDay = d3.max(series.flatMap((s) => s.rows.map((r) => r.day)));
   const updated = new Date(DATA.generatedAt);
   const defs = [];
-  defs.push('Data comes from the ' + series.map((s) => s.label).join(' and ') + ' Ads accounts and is refreshed every day.');
+  defs.push('Data comes from the ' + series.map((s) => s.label).join(' and ') + ' Ads ' + (series.length > 1 ? 'accounts' : 'account') + ' and is refreshed every day.');
   if (lastDay) defs.push('Latest day in the data: ' + dayLong(new Date(lastDay + 'T00:00:00Z')) + '.');
   defs.push('Platforms can take a few hours to finish counting a day, so today and yesterday may still go up.');
   if (DATA.hasGoogle) defs.push('Google leads are the account’s conversions plus calls from call ads.');
@@ -246,7 +256,7 @@ const DATA = /*__DATA__*/null;
     const W = Math.max(280, el.clientWidth || 600), H = 250, m = {t: 22, r: 4, b: 26, l: 0};
     const y = d3.scaleLinear([0, d3.max(rows, (r) => r.total) || 1], [H - m.b, m.t]).nice();
     const ticks = y.ticks(4);
-    const svg = d3.select(el).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`).attr('role', 'img').attr('aria-label', 'Amount spent and leads per day');
+    const svg = d3.select(el).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`).attr('role', 'img').attr('aria-label', 'Amount spent and ' + many + ' per day');
     const probe = svg.append('text').attr('visibility', 'hidden');
     const widest = d3.max(ticks, (t) => { probe.text(money0.format(t)); return probe.node().getComputedTextLength(); }) || 30;
     probe.text('Oct 30'); const dayW = probe.node().getComputedTextLength() + 14; probe.remove();
@@ -285,7 +295,7 @@ const DATA = /*__DATA__*/null;
       const head = line(dayLong(r.date)); head.className = 'd';
       const lines = [head];
       if (series.length > 1) series.forEach((s) => lines.push(line(s.label + ' spend: ' + money.format(r[s.key] || 0))));
-      lines.push(line('Spent: ' + money.format(r.total)), line('Leads: ' + int.format(r.leads)), line('Clicks: ' + int.format(r.clicks)));
+      lines.push(line('Spent: ' + money.format(r.total)), line(cap(many) + ': ' + int.format(r.leads)), line('Clicks: ' + int.format(r.clicks)));
       tip.replaceChildren(...lines); tip.hidden = false;
       const sc = el.clientWidth / W, cx = (x(r.day) + x.bandwidth() / 2) * sc, tw = tip.offsetWidth;
       tip.style.left = Math.max(0, Math.min(el.clientWidth - tw, cx - tw / 2)) + 'px';

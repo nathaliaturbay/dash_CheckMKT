@@ -31,6 +31,7 @@ jobs:
           AJ_META_CSV: ${{ secrets.AJ_META_CSV || vars.AJ_META_CSV }}
           AJ_GOOGLE_CSV: ${{ secrets.AJ_GOOGLE_CSV || vars.AJ_GOOGLE_CSV }}
           SHORELINE_META_CSV: ${{ secrets.SHORELINE_META_CSV || vars.SHORELINE_META_CSV }}
+          ONME_META_CSV: ${{ secrets.ONME_META_CSV || vars.ONME_META_CSV }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: site

@@ -107,7 +107,7 @@ async function buildClient(slug, cfg, template) {
   if (google.some((r) => r.spend > 100000)) google = google.map((r) => ({ ...r, spend: r.spend / 1e6 }));
   const data = {
     client: cfg.name, currency: cfg.currency || 'USD', locale: cfg.locale || 'en-US',
-    metaLeadsNote: cfg.metaLeadsNote || null, hasMeta: !!metaCsv, hasGoogle: !!googleCsv, meta, google, generatedAt: new Date().toISOString(),
+    metaLeadsNote: cfg.metaLeadsNote || null, resultOne: cfg.resultOne || null, resultMany: cfg.resultMany || null, hasMeta: !!metaCsv, hasGoogle: !!googleCsv, meta, google, generatedAt: new Date().toISOString(),
   };
   const json = JSON.stringify(data).replace(/</g, '\\u003c');
   const html = template.replace('/*__DATA__*/null', () => json);
