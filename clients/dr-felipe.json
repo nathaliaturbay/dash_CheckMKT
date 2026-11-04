@@ -1,0 +1,10 @@
+{
+  "name": "Dr. Felipe Queiroz",
+  "currency": "BRL",
+  "locale": "pt-BR",
+  "metaCsvSecret": "FELIPE_META_CSV",
+  "metaLeadWords": ["messaging"],
+  "resultOne": "conversa",
+  "resultMany": "conversas",
+  "metaLeadsNote": "Conversas são as novas conversas por mensagem (WhatsApp, Direct e Messenger) iniciadas a partir dos anúncios."
+}

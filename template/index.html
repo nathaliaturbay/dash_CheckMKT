@@ -160,9 +160,43 @@ const DATA = /*__DATA__*/null;
   const money0 = new Intl.NumberFormat(DATA.locale, {style: 'currency', currency: DATA.currency, maximumFractionDigits: 0});
   const int = new Intl.NumberFormat(DATA.locale, {maximumFractionDigits: 0});
   const fmt = {usd: (v) => (v == null ? '—' : money.format(v)), int: (v) => (v == null ? '—' : int.format(v))};
-  const dayShort = d3.utcFormat('%b %-d');
-  const dayLong = d3.utcFormat('%a, %b %-d');
   const set = (id, v) => { const el = $(id); if (el) el.textContent = v; };
+
+  // Portuguese page when the client's locale is pt-*. English stays the default.
+  const PT = /^pt/i.test(DATA.locale);
+  const tr = (en, pt) => (PT ? pt : en);
+  const dl = PT ? d3.timeFormatLocale({
+    dateTime: '%A, %e de %B de %Y. %X', date: '%d/%m/%Y', time: '%H:%M:%S', periods: ['AM', 'PM'],
+    days: ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'],
+    shortDays: ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'],
+    months: ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'],
+    shortMonths: ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'],
+  }) : d3;
+  const dayShort = dl.utcFormat(PT ? '%-d %b' : '%b %-d');
+  const dayLong = dl.utcFormat(PT ? '%a, %-d %b' : '%a, %b %-d');
+  if (PT) {
+    // Fixed page text. "lead(s)" is kept so the result wording below still swaps it.
+    const words = {
+      'Ads results': 'Resultados dos anúncios', 'invested in ads brought': 'investidos em anúncios trouxeram',
+      'leads, at': 'leads, a', 'per lead.': 'por lead.', 'Period': 'Período',
+      'Today': 'Hoje', 'Yesterday': 'Ontem', 'Last 7 days': 'Últimos 7 dias', 'Last 14 days': 'Últimos 14 dias',
+      'Last 30 days': 'Últimos 30 dias', 'This month': 'Este mês', 'Last month': 'Mês passado', 'Last 90 days': 'Últimos 90 dias',
+      'All platforms combined': 'Todas as plataformas', 'Cost per lead': 'Custo por lead', 'Amount spent ÷ leads': 'Valor investido ÷ leads',
+      'Amount spent': 'Valor investido', 'Clicks to the business': 'Cliques nos anúncios', 'Ad clicks and link clicks': 'Cliques nos links dos anúncios',
+      'Spend and leads by day': 'Investimento e leads por dia', 'Facebook and Instagram': 'Facebook e Instagram',
+      'Impressions': 'Impressões', 'Link clicks': 'Cliques no link', 'Ad clicks': 'Cliques',
+      'Search, Performance Max and Local Services': 'Pesquisa, Performance Max e Local Services',
+      'Results by campaign': 'Resultados por campanha',
+      'Campaigns with activity in the period, highest spend first': 'Campanhas com atividade no período, da que mais investiu para a que menos investiu',
+      'Campaign': 'Campanha', 'Platform': 'Plataforma', 'Spent': 'Investido', 'Clicks': 'Cliques',
+    };
+    document.documentElement.lang = 'pt-BR';
+    const walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    for (let n = walk.nextNode(); n; n = walk.nextNode()) {
+      const k = n.nodeValue.trim();
+      if (k && words[k] && n.parentNode.nodeName !== 'SCRIPT') n.nodeValue = n.nodeValue.replace(k, words[k]);
+    }
+  }
 
   // Wording of the main result ("lead" by default; e.g. "conversation" for a messaging client).
   const one = DATA.resultOne || 'lead', many = DATA.resultMany || 'leads';
@@ -181,27 +215,30 @@ const DATA = /*__DATA__*/null;
   if (!DATA.hasMeta) $('meta-card').remove();
   if (!DATA.hasGoogle) $('google-card').remove();
   if (!DATA.hasLsa) $('lsa-card').remove();
-  else set('g-sub', 'Search and Performance Max');
-  const andList = (a) => (a.length > 1 ? a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1] : a.join(''));
+  else set('g-sub', tr('Search and Performance Max', 'Pesquisa e Performance Max'));
+  const andList = (a) => (a.length > 1 ? a.slice(0, -1).join(', ') + tr(' and ', ' e ') + a[a.length - 1] : a.join(''));
   const labels = andList(series.map((s) => s.label));
 
-  document.title = DATA.client + ' · Ads results';
-  set('title', DATA.client + ' · ' + labels + ' Ads results');
-  set('k-spend-note', DATA.currency + (series.length > 2 ? ', all platforms' : series.length > 1 ? ', both platforms' : ''));
-  set('k-leads-note', series.length > 1 ? labels + ' combined' : series.map((s) => s.label).join('') + ' ' + many);
+  document.title = DATA.client + tr(' · Ads results', ' · Resultados dos anúncios');
+  set('title', DATA.client + ' · ' + tr(labels + ' Ads results', 'Resultados ' + labels + ' Ads'));
+  set('k-spend-note', DATA.currency + (series.length > 2 ? tr(', all platforms', ', todas as plataformas') : series.length > 1 ? tr(', both platforms', ', as duas plataformas') : ''));
+  set('k-leads-note', series.length > 1 ? labels + tr(' combined', ' somados') : tr(series.map((s) => s.label).join('') + ' ' + many, cap(many) + ' no ' + series.map((s) => s.label).join('')));
   const legend = $('legend');
   series.forEach((s) => {
     const sw = document.createElement('span'); sw.className = 'sp-sw'; sw.style.background = s.color;
-    legend.append(sw, s.label + ' spend   ');
+    legend.append(sw, tr(s.label + ' spend   ', 'Investimento ' + s.label + '   '));
   });
-  legend.append('· The number above a bar is the ' + many + ' that day.'); legend.append(' Today’s figures are still filling in.');
+  legend.append(tr('· The number above a bar is the ' + many + ' that day.', '· O número em cima da barra é o total de ' + many + ' do dia.'));
+  legend.append(tr(' Today’s figures are still filling in.', ' Os números de hoje ainda estão sendo atualizados.'));
 
   const lastDay = d3.max(series.flatMap((s) => s.rows.map((r) => r.day)));
   const updated = new Date(DATA.generatedAt);
   const defs = [];
-  defs.push('Data comes from the ' + labels + ' Ads ' + (series.length > 1 ? 'accounts' : 'account') + ' and is refreshed every day.');
-  if (lastDay) defs.push('Latest day in the data: ' + dayLong(new Date(lastDay + 'T00:00:00Z')) + '.');
-  defs.push('Platforms can take a few hours to finish counting a day, so today and yesterday may still go up.');
+  defs.push(tr('Data comes from the ' + labels + ' Ads ' + (series.length > 1 ? 'accounts' : 'account') + ' and is refreshed every day.',
+    'Os dados vêm ' + (series.length > 1 ? 'das contas' : 'da conta') + ' de anúncios ' + labels + ' Ads e são atualizados todos os dias.'));
+  if (lastDay) defs.push(tr('Latest day in the data: ', 'Último dia com dados: ') + dayLong(new Date(lastDay + 'T00:00:00Z')) + '.');
+  defs.push(tr('Platforms can take a few hours to finish counting a day, so today and yesterday may still go up.',
+    'As plataformas podem levar algumas horas para fechar a contagem de um dia, então os números de hoje e de ontem ainda podem subir.'));
   if (DATA.hasGoogle) defs.push('Google leads are the account’s conversions plus calls from call ads.');
   if (DATA.hasLsa) defs.push('Local Services leads are the calls and messages from the Local Services listing.');
   if (DATA.hasMeta) defs.push(DATA.metaLeadsNote || 'Meta leads are lead form submissions, website leads, messaging conversations and calls from ads.');
@@ -269,12 +306,12 @@ const DATA = /*__DATA__*/null;
   function drawChart(data) {
     const el = $('chart');
     el.replaceChildren();
-    if (!data.length) { const e = document.createElement('div'); e.className = 'sp-empty'; e.textContent = 'No ad activity in this period'; el.append(e); return; }
+    if (!data.length) { const e = document.createElement('div'); e.className = 'sp-empty'; e.textContent = tr('No ad activity in this period', 'Nenhuma atividade de anúncios neste período'); el.append(e); return; }
     const rows = data.map((r) => ({...r, date: new Date(r.day + 'T00:00:00Z'), total: d3.sum(series, (s) => r[s.key] || 0)}));
     const W = Math.max(280, el.clientWidth || 600), H = 250, m = {t: 22, r: 4, b: 26, l: 0};
     const y = d3.scaleLinear([0, d3.max(rows, (r) => r.total) || 1], [H - m.b, m.t]).nice();
     const ticks = y.ticks(4);
-    const svg = d3.select(el).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`).attr('role', 'img').attr('aria-label', 'Amount spent and ' + many + ' per day');
+    const svg = d3.select(el).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`).attr('role', 'img').attr('aria-label', tr('Amount spent and ' + many + ' per day', 'Valor investido e ' + many + ' por dia'));
     const probe = svg.append('text').attr('visibility', 'hidden');
     const widest = d3.max(ticks, (t) => { probe.text(money0.format(t)); return probe.node().getComputedTextLength(); }) || 30;
     probe.text('Oct 30'); const dayW = probe.node().getComputedTextLength() + 14; probe.remove();
@@ -312,8 +349,8 @@ const DATA = /*__DATA__*/null;
       const line = (t) => { const p = document.createElement('div'); p.textContent = t; return p; };
       const head = line(dayLong(r.date)); head.className = 'd';
       const lines = [head];
-      if (series.length > 1) series.forEach((s) => lines.push(line(s.label + ' spend: ' + money.format(r[s.key] || 0))));
-      lines.push(line('Spent: ' + money.format(r.total)), line(cap(many) + ': ' + int.format(r.leads)), line('Clicks: ' + int.format(r.clicks)));
+      if (series.length > 1) series.forEach((s) => lines.push(line(tr(s.label + ' spend: ', 'Investimento ' + s.label + ': ') + money.format(r[s.key] || 0))));
+      lines.push(line(tr('Spent: ', 'Investido: ') + money.format(r.total)), line(cap(many) + ': ' + int.format(r.leads)), line(tr('Clicks: ', 'Cliques: ') + int.format(r.clicks)));
       tip.replaceChildren(...lines); tip.hidden = false;
       const sc = el.clientWidth / W, cx = (x(r.day) + x.bandwidth() / 2) * sc, tw = tip.offsetWidth;
       tip.style.left = Math.max(0, Math.min(el.clientWidth - tw, cx - tw / 2)) + 'px';

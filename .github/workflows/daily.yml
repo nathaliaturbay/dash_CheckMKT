@@ -35,6 +35,7 @@ jobs:
           JT_META_CSV: ${{ secrets.JT_META_CSV || vars.JT_META_CSV }}
           JT_GOOGLE_CSV: ${{ secrets.JT_GOOGLE_CSV || vars.JT_GOOGLE_CSV }}
           JT_LSA_CSV: ${{ secrets.JT_LSA_CSV || vars.JT_LSA_CSV }}
+          FELIPE_META_CSV: ${{ secrets.FELIPE_META_CSV || vars.FELIPE_META_CSV }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: site
