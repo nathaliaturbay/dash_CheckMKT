@@ -10,13 +10,13 @@
 <style>
 :root{
   --bg:#faf9f5;--panel:#ffffff;--fg:#1f1e1d;--muted:#6b6a65;--line:#e6e3da;--grid:#eeece5;--axis:#c9c6bc;
-  --bad:#c4473a;--c0:#2f6fdb;--c1:#d97a2b;--shadow:0 6px 20px rgba(0,0,0,.08);
+  --bad:#c4473a;--c0:#2f6fdb;--c1:#d97a2b;--c2:#1f9d8a;--shadow:0 6px 20px rgba(0,0,0,.08);
   --sans:'Inter',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;--serif:'Source Serif 4',Georgia,serif;
   --r:10px;--gap:20px;
 }
 @media (prefers-color-scheme:dark){:root{
   --bg:#1c1b19;--panel:#262522;--fg:#f2f0ea;--muted:#a3a097;--line:#3a3833;--grid:#33312d;--axis:#55524b;
-  --c0:#6c9bf0;--c1:#eb9a56;--shadow:0 6px 20px rgba(0,0,0,.4);
+  --c0:#6c9bf0;--c1:#eb9a56;--c2:#4cc3ae;--shadow:0 6px 20px rgba(0,0,0,.4);
 }}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:15px;line-height:1.45}
@@ -48,7 +48,7 @@ body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--sans);font-
 .sp-list .k{color:var(--muted)}
 .sp-list .v{font-variant-numeric:tabular-nums;font-weight:500}
 .sp-sw{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:baseline}
-.sp-sw.m{background:var(--c0)}.sp-sw.g{background:var(--c1)}
+.sp-sw.m{background:var(--c0)}.sp-sw.g{background:var(--c1)}.sp-sw.l{background:var(--c2)}
 .sp-tablebox{overflow-x:auto}
 .sp-table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
 .sp-table th{text-align:right;font-weight:500;font-size:13px;color:var(--muted);padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
@@ -110,13 +110,25 @@ body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--sans);font-
 
     <article class="sp-card" id="google-card">
       <h2><span class="sp-sw g"></span>Google Ads</h2>
-      <p class="sub">Search, Performance Max and Local Services</p>
+      <p class="sub" id="g-sub">Search, Performance Max and Local Services</p>
       <ul class="sp-list">
         <li><span class="k">Amount spent</span><span class="v" id="g-spend">—</span></li>
         <li><span class="k">Leads</span><span class="v" id="g-leads">—</span></li>
         <li><span class="k">Cost per lead</span><span class="v" id="g-cpl">—</span></li>
         <li><span class="k">Impressions</span><span class="v" id="g-impr">—</span></li>
         <li><span class="k">Ad clicks</span><span class="v" id="g-clicks">—</span></li>
+      </ul>
+    </article>
+
+    <article class="sp-card" id="lsa-card">
+      <h2><span class="sp-sw l"></span>Local Services Ads</h2>
+      <p class="sub">Google Guaranteed listings</p>
+      <ul class="sp-list">
+        <li><span class="k">Amount spent</span><span class="v" id="l-spend">—</span></li>
+        <li><span class="k">Leads</span><span class="v" id="l-leads">—</span></li>
+        <li><span class="k">Cost per lead</span><span class="v" id="l-cpl">—</span></li>
+        <li><span class="k">Impressions</span><span class="v" id="l-impr">—</span></li>
+        <li><span class="k">Ad clicks</span><span class="v" id="l-clicks">—</span></li>
       </ul>
     </article>
 
@@ -165,13 +177,18 @@ const DATA = /*__DATA__*/null;
   const series = [];
   if (DATA.hasMeta) series.push({key: 'meta', label: 'Meta', color: 'var(--c0)', rows: DATA.meta});
   if (DATA.hasGoogle) series.push({key: 'google', label: 'Google', color: 'var(--c1)', rows: DATA.google});
+  if (DATA.hasLsa) series.push({key: 'lsa', label: 'Local Services', color: 'var(--c2)', rows: DATA.lsa});
   if (!DATA.hasMeta) $('meta-card').remove();
   if (!DATA.hasGoogle) $('google-card').remove();
+  if (!DATA.hasLsa) $('lsa-card').remove();
+  else set('g-sub', 'Search and Performance Max');
+  const andList = (a) => (a.length > 1 ? a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1] : a.join(''));
+  const labels = andList(series.map((s) => s.label));
 
   document.title = DATA.client + ' · Ads results';
-  set('title', DATA.client + ' · ' + series.map((s) => s.label).join(' and ') + ' Ads results');
-  set('k-spend-note', DATA.currency + (series.length > 1 ? ', both platforms' : ''));
-  set('k-leads-note', series.length > 1 ? series.map((s) => s.label).join(' and ') + ' combined' : series.map((s) => s.label).join('') + ' ' + many);
+  set('title', DATA.client + ' · ' + labels + ' Ads results');
+  set('k-spend-note', DATA.currency + (series.length > 2 ? ', all platforms' : series.length > 1 ? ', both platforms' : ''));
+  set('k-leads-note', series.length > 1 ? labels + ' combined' : series.map((s) => s.label).join('') + ' ' + many);
   const legend = $('legend');
   series.forEach((s) => {
     const sw = document.createElement('span'); sw.className = 'sp-sw'; sw.style.background = s.color;
@@ -182,10 +199,11 @@ const DATA = /*__DATA__*/null;
   const lastDay = d3.max(series.flatMap((s) => s.rows.map((r) => r.day)));
   const updated = new Date(DATA.generatedAt);
   const defs = [];
-  defs.push('Data comes from the ' + series.map((s) => s.label).join(' and ') + ' Ads ' + (series.length > 1 ? 'accounts' : 'account') + ' and is refreshed every day.');
+  defs.push('Data comes from the ' + labels + ' Ads ' + (series.length > 1 ? 'accounts' : 'account') + ' and is refreshed every day.');
   if (lastDay) defs.push('Latest day in the data: ' + dayLong(new Date(lastDay + 'T00:00:00Z')) + '.');
   defs.push('Platforms can take a few hours to finish counting a day, so today and yesterday may still go up.');
   if (DATA.hasGoogle) defs.push('Google leads are the account’s conversions plus calls from call ads.');
+  if (DATA.hasLsa) defs.push('Local Services leads are the calls and messages from the Local Services listing.');
   if (DATA.hasMeta) defs.push(DATA.metaLeadsNote || 'Meta leads are lead form submissions, website leads, messaging conversations and calls from ads.');
   set('defs', defs.join(' '));
 
@@ -229,7 +247,7 @@ const DATA = /*__DATA__*/null;
     const cpl = (sp, l) => (l ? sp / l : null);
     set('t-spend', fmt.usd(spend)); set('t-leads', fmt.int(leads)); set('t-cpl', fmt.usd(cpl(spend, leads)));
     set('k-spend', fmt.usd(spend)); set('k-leads', fmt.int(leads)); set('k-cpl', fmt.usd(cpl(spend, leads))); set('k-clicks', fmt.int(clicks));
-    [['meta', 'm'], ['google', 'g']].forEach(([key, p]) => {
+    [['meta', 'm'], ['google', 'g'], ['lsa', 'l']].forEach(([key, p]) => {
       const t = tot[key]; if (!t) return;
       set(p + '-spend', fmt.usd(t.spend)); set(p + '-leads', fmt.int(t.leads)); set(p + '-cpl', fmt.usd(cpl(t.spend, t.leads)));
       set(p + '-impr', fmt.int(t.impressions)); set(p + '-clicks', fmt.int(t.clicks));

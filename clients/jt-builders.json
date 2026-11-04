@@ -1,0 +1,9 @@
+{
+  "name": "J&T Builders",
+  "currency": "USD",
+  "locale": "en-US",
+  "metaCsvSecret": "JT_META_CSV",
+  "googleCsvSecret": "JT_GOOGLE_CSV",
+  "lsaCsvSecret": "JT_LSA_CSV",
+  "metaLeadsNote": "Meta leads are website leads, messaging conversations and calls from ads."
+}

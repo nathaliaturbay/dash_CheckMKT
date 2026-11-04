@@ -96,27 +96,39 @@ async function getCsv(secretName) {
 }
 
 async function buildClient(slug, cfg, template) {
-  const metaCsv = await getCsv(cfg.metaCsvSecret);
-  const googleCsv = await getCsv(cfg.googleCsvSecret);
+  // A source whose secret is not set yet is left out; the client is skipped only if none is set.
+  const missing = [];
+  const optional = (name) => getCsv(name).catch((e) => { if (!e.missingSecret) throw e; missing.push(e.message); return null; });
+  const metaCsv = await optional(cfg.metaCsvSecret);
+  const googleCsv = await optional(cfg.googleCsvSecret);
+  const lsaCsv = await optional(cfg.lsaCsvSecret);
+  if (!metaCsv && !googleCsv && !lsaCsv) { const e = new Error(missing.join('; ')); e.missingSecret = true; throw e; }
+  missing.forEach((m) => console.log(`::warning::${slug}: ${m}`));
   const meta = metaCsv ? readRows(metaCsv, META_COLS, cfg.metaLeadWords || META_LEAD_WORDS) : [];
-  let google = googleCsv ? readRows(googleCsv, GOOGLE_COLS).map((r) => ({
-    day: r.day, campaign: r.campaign, spend: r.spend, impressions: r.impressions, clicks: r.clicks,
-    leads: r.conversions + r.calls,
-  })) : [];
-  // Safety net: if Google cost arrived in micros, convert to currency.
-  if (google.some((r) => r.spend > 100000)) google = google.map((r) => ({ ...r, spend: r.spend / 1e6 }));
+  // Google Ads and Local Services Ads sheets share the same column layout.
+  const readGoogle = (csv) => {
+    let rows = readRows(csv, GOOGLE_COLS).map((r) => ({
+      day: r.day, campaign: r.campaign, spend: r.spend, impressions: r.impressions, clicks: r.clicks,
+      leads: r.conversions + r.calls,
+    }));
+    // Safety net: if cost arrived in micros, convert to currency.
+    if (rows.some((r) => r.spend > 100000)) rows = rows.map((r) => ({ ...r, spend: r.spend / 1e6 }));
+    return rows;
+  };
+  const google = googleCsv ? readGoogle(googleCsv) : [];
+  const lsa = lsaCsv ? readGoogle(lsaCsv) : [];
   const data = {
     client: cfg.name, currency: cfg.currency || 'USD', locale: cfg.locale || 'en-US',
-    metaLeadsNote: cfg.metaLeadsNote || null, resultOne: cfg.resultOne || null, resultMany: cfg.resultMany || null, hasMeta: !!metaCsv, hasGoogle: !!googleCsv, meta, google, generatedAt: new Date().toISOString(),
+    metaLeadsNote: cfg.metaLeadsNote || null, resultOne: cfg.resultOne || null, resultMany: cfg.resultMany || null, hasMeta: !!metaCsv, hasGoogle: !!googleCsv, hasLsa: !!lsaCsv, meta, google, lsa, generatedAt: new Date().toISOString(),
   };
   const json = JSON.stringify(data).replace(/</g, '\\u003c');
   const html = template.replace('/*__DATA__*/null', () => json);
   fs.mkdirSync(path.join('site', slug), { recursive: true });
   fs.writeFileSync(path.join('site', slug, 'index.html'), html);
-  console.log(`${slug}: ${meta.length} Meta rows, ${google.length} Google rows`);
+  console.log(`${slug}: ${meta.length} Meta rows, ${google.length} Google rows, ${lsa.length} LSA rows`);
   const sum = (rows) => rows.reduce((a, r) => ({ spend: a.spend + r.spend, leads: a.leads + r.leads, clicks: a.clicks + r.clicks }), { spend: 0, leads: 0, clicks: 0 });
   const span = (rows) => rows.length ? `${rows.reduce((m, r) => (r.day < m ? r.day : m), rows[0].day)}..${rows.reduce((m, r) => (r.day > m ? r.day : m), rows[0].day)}` : 'none';
-  console.log(`${slug}: Meta ${span(meta)} ${JSON.stringify(sum(meta))}; Google ${span(google)} ${JSON.stringify(sum(google))}`);
+  console.log(`${slug}: Meta ${span(meta)} ${JSON.stringify(sum(meta))}; Google ${span(google)} ${JSON.stringify(sum(google))}; LSA ${span(lsa)} ${JSON.stringify(sum(lsa))}`);
 }
 
 (async () => {
